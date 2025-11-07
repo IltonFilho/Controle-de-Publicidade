@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Controle de Publicidade</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-4">
+  <div class="container">
+    <h1>Controle de Publicidade</h1>
+    <div id="auth" class="mb-3"></div>
+    <div id="main" style="display:none;">
+      <p><button id="btn-logout" class="btn btn-secondary btn-sm">Logout</button></p>
+      <h3>Campanhas</h3>
+      <div id="campanhas-list"></div>
+      <h4>Nova Campanha</h4>
+      <form id="form-campanha">
+        <input class="form-control mb-2" name="titulo" placeholder="Título" required>
+        <input class="form-control mb-2" name="cliente" placeholder="Cliente">
+        <input class="form-control mb-2" name="custo" placeholder="Custo">
+        <input class="form-control mb-2" name="alcance" placeholder="Alcance">
+        <textarea class="form-control mb-2" name="resultado" placeholder="Resultado"></textarea>
+        <input class="form-control mb-2" type="date" name="data_inicio">
+        <input class="form-control mb-2" type="date" name="data_fim">
+        <button class="btn btn-primary">Salvar</button>
+      </form>
+    </div>
+
+    <div id="login-area" style="max-width:420px;">
+      <h3>Login</h3>
+      <form id="form-login">
+        <input class="form-control mb-2" name="email" placeholder="Email" required>
+        <input class="form-control mb-2" name="senha" type="password" placeholder="Senha" required>
+        <button class="btn btn-success">Entrar</button>
+      </form>
+      <hr>
+      <h5>Registrar usuário</h5>
+      <form id="form-register">
+        <input class="form-control mb-2" name="nome" placeholder="Nome" required>
+        <input class="form-control mb-2" name="email" placeholder="Email" required>
+        <input class="form-control mb-2" name="senha" type="password" placeholder="Senha" required>
+        <button class="btn btn-outline-primary">Registrar</button>
+      </form>
+    </div>
+  </div>
+
+<script>
+const api = (path, opts={})=>{
+  const token = localStorage.getItem('token');
+  const headers = opts.headers || {};
+  if(token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch('/api/' + path, {...opts, headers}).then(r=>r.json());
+};
+
+const formLogin = document.getElementById('form-login');
+const formRegister = document.getElementById('form-register');
+const main = document.getElementById('main');
+const loginArea = document.getElementById('login-area');
+
+formLogin.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(formLogin);
+  const body = {email: fd.get('email'), senha: fd.get('senha')};
+  const res = await fetch('/api/usuarios/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if(data.token){ localStorage.setItem('token', data.token); showMain(); } else alert(data.error || 'Erro');
+});
+
+formRegister.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(formRegister);
+  const body = {nome: fd.get('nome'), email: fd.get('email'), senha: fd.get('senha')};
+  const res = await fetch('/api/usuarios/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if(data.id) alert('Registrado com sucesso. Faça login.'); else alert(data.error || 'Erro');
+});
+
+document.getElementById('btn-logout').addEventListener('click', ()=>{
+  localStorage.removeItem('token'); location.reload();
+});
+
+async function showMain(){
+  loginArea.style.display='none';
+  main.style.display='block';
+  await loadCampanhas();
+}
+
+async function loadCampanhas(){
+  const res = await api('campanhas');
+  if(res.error){ alert(res.error); localStorage.removeItem('token'); location.reload(); return; }
+  const container = document.getElementById('campanhas-list');
+  container.innerHTML = '';
+  res.forEach(c=>{
+    const el = document.createElement('div');
+    el.className = 'card mb-2 p-2';
+    el.innerHTML = '<b>'+c.titulo+'</b> <small>('+c.cliente+')</small><br>Custo: '+c.custo+' | Alcance: '+c.alcance+'<br>'+ (c.resultado? c.resultado :'');
+    container.appendChild(el);
+  });
+}
+
+document.getElementById('form-campanha').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = {
+    titulo: fd.get('titulo'),
+    cliente: fd.get('cliente'),
+    custo: fd.get('custo'),
+    alcance: fd.get('alcance'),
+    resultado: fd.get('resultado'),
+    data_inicio: fd.get('data_inicio'),
+    data_fim: fd.get('data_fim'),
+  };
+  const res = await api('campanhas', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(res.id){ alert('Campanha criada'); e.target.reset(); loadCampanhas(); }
+  else alert(res.error || 'Erro');
+}
+
+// auto-show if token exists
+if(localStorage.getItem('token')) showMain();
+</script>
+</body>
+</html>

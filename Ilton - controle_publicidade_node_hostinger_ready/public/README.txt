@@ -1,0 +1,1 @@
+Front-end simples para interagir com a API. Use o arquivo .env e siga o README principal.
